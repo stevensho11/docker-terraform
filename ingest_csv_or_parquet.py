@@ -33,22 +33,31 @@ def main(params):
     db         = params.db
     table_name = params.table_name
     url        = params.url
+    file_type  = params.file_type
 
     # Create a temporary directory; it will auto‐clean when we exit the with‐block.
     with tempfile.TemporaryDirectory() as tmpdir:
-        parquet_path = os.path.join(tmpdir, "dl_parquet.parquet")
-        csv_path     = os.path.join(tmpdir, "output_csv.csv")
+        if file_type == "parquet":
+            parquet_path = os.path.join(tmpdir, "input.parquet")
+            print(f"Downloading Parquet from {url} → {parquet_path}")
+            download_file(url, parquet_path)
 
-        print(f"Downloading Parquet from {url} → {parquet_path}")
-        download_file(url, parquet_path)
+            df = pd.read_parquet(parquet_path)
+            print(f"Parquet file has {len(df):,} rows → converting to CSV")
+
+            csv_path = os.path.join(tmpdir, "converted.csv")
+            df.to_csv(csv_path, index=False)
+
+        elif file_type == "csv":
+            csv_path = os.path.join(tmpdir, "input.csv")
+            download_file(url, csv_path)
+
+        else:
+            print("Unsupported type: must be 'csv' or 'parquet'", file=sys.stderr)
+            sys.exit(1)
 
         # Build the SQLAlchemy engine once
         engine = create_engine(f"postgresql://{user}:{passwd}@{host}:{port}/{db}")
-
-        # Read the entire Parquet into a DataFrame, then immediately dump it to CSV
-        df = pd.read_parquet(parquet_path)
-        print(f"File has {len(df)} rows")
-        df.to_csv(csv_path, index=False)
 
         # Now open that CSV as a chunked iterator:
         reader = pd.read_csv(csv_path, iterator=True, chunksize=100_000)
@@ -115,6 +124,10 @@ if __name__ == "__main__":
     parser.add_argument("--port",       help="port for Postgres", required=True)
     parser.add_argument("--db",         help="database name for Postgres", required=True)
     parser.add_argument("--table_name", help="table name for Postgres", required=True)
+    parser.add_argument("--file_type",
+                        help="file type to parse, can only be csv or parquet",
+                        choices=['csv', 'parquet'],
+                        required=True)
     parser.add_argument("--url",        help="URL for Parquet file",  required=True)
 
     args = parser.parse_args()
