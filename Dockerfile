@@ -1,8 +1,8 @@
 FROM python:3.12
 
-RUN pip install pandas
+RUN pip install pandas sqlalchemy psycopg2 requests pyarrow
 
 WORKDIR /app
-COPY pipeline.py pipeline.py
+COPY ingest_parquet.py ingest_parquet.py
 
-ENTRYPOINT [ "python", "pipeline.py" ]
+ENTRYPOINT [ "python", "ingest_parquet.py" ]
