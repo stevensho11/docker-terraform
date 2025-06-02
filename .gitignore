@@ -3,3 +3,9 @@ ny_taxi_postgres_data/
 *.csv
 *.parquet
 venv/
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfstate
+tfplan
